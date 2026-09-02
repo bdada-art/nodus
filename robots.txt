@@ -1,0 +1,3 @@
+User-agent: *
+Disallow:
+Sitemap: https://bdada-art.github.io/nodus/sitemap.xml
