@@ -1,6 +1,132 @@
 <!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Author: Ahmet Yılmaz - NODUS</title><meta name="robots" content="noindex, follow"><meta name="generator" content="Publii Open-Source CMS for Static Site"><link rel="alternate" type="application/atom+xml" href="https://bdada-art.github.io/nodus/feed.xml" title="NODUS - RSS"><link rel="alternate" type="application/json" href="https://bdada-art.github.io/nodus/feed.json" title="NODUS - JSON"><meta property="og:title" content="Ahmet Yılmaz"><meta property="og:site_name" content="NODUS"><meta property="og:description" content=""><meta property="og:url" content="https://bdada-art.github.io/nodus/authors/ahmet-yilmaz/"><meta property="og:type" content="website"><link rel="preload" href="https://bdada-art.github.io/nodus/assets/dynamic/fonts/publicsans/publicsans.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="https://bdada-art.github.io/nodus/assets/dynamic/fonts/publicsans/publicsans-italic.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="https://bdada-art.github.io/nodus/assets/dynamic/fonts/frankruhllibre/frankruhllibre.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="https://bdada-art.github.io/nodus/assets/css/style.css?v&#x3D;b1ec35eb59a5b4c4823ec2f6370dbebc"><script type="application/ld+json">{"@context":"http://schema.org","@type":"Organization","name":"NODUS","url":"https://bdada-art.github.io/nodus/"}</script><noscript><style>img[loading] {
                     opacity: 1;
-                }</style></noscript></head><body class="author-template"><script>document.addEventListener('DOMContentLoaded', function () {
+                }</style></noscript><script>document.addEventListener("DOMContentLoaded", () => {
+  const WORKER_URL = "https://nodus-translate.bdada0602.workers.dev/";
+
+  const titleEl = document.querySelector(".hero__content h1");
+  const contentEl = document.querySelector(".content__entry");
+
+  if (!titleEl || !contentEl) return;
+
+  const originalTitle = titleEl.innerHTML;
+  const originalContent = contentEl.innerHTML;
+
+  const switcher = document.createElement("div");
+  switcher.id = "nodus-language-switcher";
+  switcher.innerHTML = `
+    <button type="button" data-lang="tr" class="active">TR</button>
+    <span>|</span>
+    <button type="button" data-lang="en">EN</button>
+  `;
+
+  document.body.appendChild(switcher);
+
+  const trButton = switcher.querySelector('[data-lang="tr"]');
+  const enButton = switcher.querySelector('[data-lang="en"]');
+
+  async function translateText(text) {
+    const response = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text,
+        targetLanguage: "English"
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Translation failed");
+    }
+
+    return data.translation;
+  }
+
+  async function translateToEnglish() {
+    enButton.disabled = true;
+    enButton.textContent = "...";
+
+    try {
+      const [translatedTitle, translatedContent] = await Promise.all([
+        translateText(titleEl.innerText.trim()),
+        translateText(contentEl.innerText.trim())
+      ]);
+
+      titleEl.textContent = translatedTitle;
+
+      contentEl.innerHTML = "";
+
+      const paragraphs = translatedContent
+        .split(/\n\s*\n/)
+        .filter(Boolean);
+
+      paragraphs.forEach(text => {
+        const p = document.createElement("p");
+        p.textContent = text.trim();
+        contentEl.appendChild(p);
+      });
+
+      enButton.classList.add("active");
+      trButton.classList.remove("active");
+
+    } catch (error) {
+      console.error("NODUS translation error:", error);
+      alert("İngilizce çeviri şu anda kullanılamıyor.");
+    } finally {
+      enButton.disabled = false;
+      enButton.textContent = "EN";
+    }
+  }
+
+  function restoreTurkish() {
+    titleEl.innerHTML = originalTitle;
+    contentEl.innerHTML = originalContent;
+
+    trButton.classList.add("active");
+    enButton.classList.remove("active");
+  }
+
+  enButton.addEventListener("click", translateToEnglish);
+  trButton.addEventListener("click", restoreTurkish);
+});</script><style>#nodus-language-switcher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 9999;
+  background: #0A1726;
+  border: 1px solid #C49A55;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: "Public Sans", sans-serif;
+  font-size: 13px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+
+#nodus-language-switcher button {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  padding: 2px 5px;
+  font: inherit;
+}
+
+#nodus-language-switcher button.active {
+  color: #C49A55;
+  font-weight: 700;
+}
+
+#nodus-language-switcher button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+#nodus-language-switcher span {
+  color: #626A73;
+}</style></head><body class="author-template"><script>document.addEventListener('DOMContentLoaded', function () {
     const logo = document.querySelector('.logo');
 
     if (logo && !document.querySelector('.site-motto')) {
