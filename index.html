@@ -34,6 +34,15 @@
     "Önceki": "Previous",
     "Sonraki": "Next",
 
+    "Ara": "Search",
+    "Arama": "Search",
+
+    "Yazar": "Author",
+    "Yayın tarihi": "Published",
+
+    "Bu yazı son olarak şu tarihte güncellendi":
+      "This article was last updated on",
+
     "Dış Politika & Diplomasi":
       "Foreign Policy & Diplomacy",
 
@@ -71,11 +80,9 @@
 
   function remember(element, type = "text") {
 
-    const key = element;
+    if (originalValues.has(element)) return;
 
-    if (originalValues.has(key)) return;
-
-    originalValues.set(key, {
+    originalValues.set(element, {
       type,
       value:
         type === "html"
@@ -115,6 +122,10 @@
     }
   }
 
+
+  /* ==========================
+     SABİT ARAYÜZ ÇEVİRİSİ
+     ========================== */
 
   function translateStaticInterface() {
 
@@ -333,10 +344,8 @@
 
     if (!title || !content) return;
 
-
     remember(title);
     remember(content, "html");
-
 
     const titleTranslation =
       await groqTranslate(
@@ -358,9 +367,7 @@
       const text =
         block.textContent.trim();
 
-      if (
-        text.length < 2
-      ) {
+      if (text.length < 2) {
         continue;
       }
 
@@ -385,6 +392,11 @@
 
   async function translateHomepagePosts() {
 
+    /*
+      Makale sayfasındaysak
+      ana sayfa kartlarını arama.
+    */
+
     if (
       document.querySelector(
         ".content__entry"
@@ -394,20 +406,24 @@
     }
 
 
-    const links =
-      Array.from(
-        document.querySelectorAll(
-          'main a[href$=".html"], a.feed__title, .feed__title a'
-        )
-      );
+    /*
+      SADECE BURASI DÜZELTİLDİ.
+
+      Senin verdiğin gerçek HTML:
+
+      <h2 class="editorial-card__title">
+        <a href="...">Başlık</a>
+      </h2>
+    */
+
+    const links = Array.from(
+      document.querySelectorAll(
+        "h2.editorial-card__title > a"
+      )
+    );
 
 
-    const unique = [
-      ...new Set(links)
-    ];
-
-
-    for (const link of unique) {
+    for (const link of links) {
 
       const text =
         link.textContent.trim();
@@ -547,7 +563,7 @@
 
 
   /* ==========================
-     TÜRKÇEYE DÖN
+     TÜRKÇE MOD
      ========================== */
 
   function enableTurkish() {
@@ -576,16 +592,30 @@
     );
 
 
+    /*
+      Ana sayfa kart başlıklarını
+      orijinal Türkçeye döndür.
+    */
+
     document
       .querySelectorAll(
-        "[data-nodus-original]"
+        "h2.editorial-card__title > a"
       )
-      .forEach(() => {});
+      .forEach(element => {
+
+        if (
+          element.__nodusOriginalText
+        ) {
+          element.textContent =
+            element.__nodusOriginalText;
+        }
+
+      });
 
 
     document
       .querySelectorAll(
-        'main a[href$=".html"], a.feed__title, .feed__title a, .feed__excerpt, .post__excerpt'
+        ".feed__excerpt, .post__excerpt"
       )
       .forEach(element => {
 
@@ -616,7 +646,7 @@
 
 
   /* ==========================
-     EVENTLER
+     BUTONLAR
      ========================== */
 
   enButton.addEventListener(
@@ -654,9 +684,12 @@
   }
 
 });</script><style>#nodus-language-switcher {
+
   position: fixed;
+
   right: 24px;
   bottom: 24px;
+
   z-index: 9999;
 
   display: flex;
@@ -664,9 +697,11 @@
   gap: 3px;
 
   background: #0A1726;
+
   border: 1px solid #C49A55;
 
   padding: 8px 12px;
+
   border-radius: 4px;
 
   font-family:
@@ -678,34 +713,49 @@
   box-shadow:
     0 4px 14px
     rgba(0,0,0,.18);
+
 }
 
 
 #nodus-language-switcher button {
+
   border: 0;
+
   background: transparent;
+
   color: #ffffff;
+
   cursor: pointer;
 
   padding: 2px 5px;
+
   font: inherit;
+
 }
 
 
 #nodus-language-switcher button.active {
+
   color: #C49A55;
+
   font-weight: 700;
+
 }
 
 
 #nodus-language-switcher button:disabled {
+
   opacity: .6;
+
   cursor: wait;
+
 }
 
 
 #nodus-language-switcher span {
+
   color: #626A73;
+
 }</style></head><body class="home-template"><script>document.addEventListener('DOMContentLoaded', function () {
     const logo = document.querySelector('.logo');
 
