@@ -5,9 +5,12 @@
   const WORKER_URL =
     "https://nodus-translate.bdada0602.workers.dev/";
 
-  /* =========================
-     NODUS UI TRANSLATIONS
-     ========================= */
+  const originalValues = new Map();
+  let translating = false;
+
+  /* ==========================
+     NODUS SABİT ÇEVİRİLER
+     ========================== */
 
   const dictionary = {
     "Ana Sayfa": "Home",
@@ -15,6 +18,11 @@
     "Konular": "Topics",
     "Yazarlar": "Authors",
     "Hakkımızda": "About",
+
+    "Bilginin Egemenliği": "The Primacy of Knowledge",
+
+    "Farklı disiplinlerden uzmanların katkılarıyla küresel ve bölgesel gelişmeleri anlamaya yönelik bağımsız analiz, yorum ve değerlendirmeler.":
+      "Independent analysis, commentary and assessments aimed at understanding global and regional developments through contributions from experts across different disciplines.",
 
     "Son Analizler": "Latest Analysis",
     "Tüm Analizler": "All Analysis",
@@ -26,20 +34,17 @@
     "Önceki": "Previous",
     "Sonraki": "Next",
 
-    "Ara": "Search",
-    "Arama": "Search",
+    "Dış Politika & Diplomasi":
+      "Foreign Policy & Diplomacy",
 
-    "Yazar": "Author",
-    "Yayın tarihi": "Published",
-
-    "Bu yazı son olarak şu tarihte güncellendi":
-      "This article was last updated on"
+    "Jeopolitik & Strateji":
+      "Geopolitics & Strategy"
   };
 
 
-  /* =========================
-     LANGUAGE SWITCHER
-     ========================= */
+  /* ==========================
+     TR | EN BUTONU
+     ========================== */
 
   const switcher = document.createElement("div");
 
@@ -60,239 +65,459 @@
     switcher.querySelector('[data-lang="en"]');
 
 
-  /* =========================
-     ORIGINAL PAGE STORAGE
-     ========================= */
+  /* ==========================
+     YARDIMCI FONKSİYONLAR
+     ========================== */
 
-  const originalTexts = new Map();
+  function remember(element, type = "text") {
 
-  function saveOriginalText(element) {
+    const key = element;
 
-    if (!originalTexts.has(element)) {
-      originalTexts.set(element, element.textContent);
-    }
+    if (originalValues.has(key)) return;
+
+    originalValues.set(key, {
+      type,
+      value:
+        type === "html"
+          ? element.innerHTML
+          : element.textContent
+    });
 
   }
 
 
-  /* =========================
-     INTERFACE TRANSLATION
-     ========================= */
+  function replaceExactText(element, from, to) {
 
-  function translateInterface() {
-
-    const elements = document.querySelectorAll(
-      "a, button, span, h1, h2, h3, h4, p, li"
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT
     );
 
-    elements.forEach(element => {
+    let node;
 
-      if (
-        element.closest(".content__entry") ||
-        element.closest("#nodus-language-switcher")
-      ) {
-        return;
+    while ((node = walker.nextNode())) {
+
+      if (node.nodeValue.trim() === from) {
+
+        if (!node.__nodusOriginal) {
+          node.__nodusOriginal = node.nodeValue;
+        }
+
+        const leading =
+          node.nodeValue.match(/^\s*/)?.[0] || "";
+
+        const trailing =
+          node.nodeValue.match(/\s*$/)?.[0] || "";
+
+        node.nodeValue =
+          leading + to + trailing;
       }
+    }
+  }
 
-      const text = element.textContent.trim();
 
-      if (dictionary[text]) {
+  function translateStaticInterface() {
 
-        saveOriginalText(element);
+    Object.entries(dictionary).forEach(
+      ([tr, en]) => {
 
-        element.textContent = dictionary[text];
+        document
+          .querySelectorAll(
+            "a, button, span, h1, h2, h3, h4, p, li"
+          )
+          .forEach(element => {
+
+            if (
+              element.closest(
+                "#nodus-language-switcher"
+              )
+            ) {
+              return;
+            }
+
+            replaceExactText(
+              element,
+              tr,
+              en
+            );
+
+          });
 
       }
+    );
 
-    });
+    translateDates();
 
     document.documentElement.lang = "en";
-
   }
 
 
-  function restoreInterface() {
+  function restoreStaticInterface() {
 
-    originalTexts.forEach((text, element) => {
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT
+    );
 
-      if (document.contains(element)) {
-        element.textContent = text;
+    let node;
+
+    while ((node = walker.nextNode())) {
+
+      if (node.__nodusOriginal !== undefined) {
+        node.nodeValue =
+          node.__nodusOriginal;
       }
 
-    });
+    }
 
     document.documentElement.lang = "tr";
+  }
+
+
+  /* ==========================
+     TARİHLER
+     ========================== */
+
+  const months = {
+    "Ocak": "January",
+    "Şubat": "February",
+    "Mart": "March",
+    "Nisan": "April",
+    "Mayıs": "May",
+    "Haziran": "June",
+    "Temmuz": "July",
+    "Ağustos": "August",
+    "Eylül": "September",
+    "Ekim": "October",
+    "Kasım": "November",
+    "Aralık": "December"
+  };
+
+
+  function translateDates() {
+
+    document
+      .querySelectorAll("time, .feed__date")
+      .forEach(element => {
+
+        if (!element.__nodusOriginalText) {
+          element.__nodusOriginalText =
+            element.textContent;
+        }
+
+        let text = element.textContent;
+
+        Object.entries(months).forEach(
+          ([tr, en]) => {
+            text = text.replace(tr, en);
+          }
+        );
+
+        element.textContent = text;
+
+      });
 
   }
 
 
-  /* =========================
-     GROQ TRANSLATION
-     ========================= */
+  function restoreDates() {
+
+    document
+      .querySelectorAll("time, .feed__date")
+      .forEach(element => {
+
+        if (element.__nodusOriginalText) {
+          element.textContent =
+            element.__nodusOriginalText;
+        }
+
+      });
+
+  }
+
+
+  /* ==========================
+     GROQ
+     ========================== */
 
   async function groqTranslate(text) {
 
-    const response = await fetch(WORKER_URL, {
+    const clean = text.trim();
 
-      method: "POST",
+    if (!clean) return clean;
 
-      headers: {
-        "Content-Type": "application/json"
-      },
+    const cacheKey =
+      "nodus-en-" +
+      simpleHash(clean);
 
-      body: JSON.stringify({
-        text: text,
-        targetLanguage: "English"
-      })
+    const cached =
+      localStorage.getItem(cacheKey);
 
-    });
+    if (cached) {
+      return cached;
+    }
 
-    const data = await response.json();
+    const response =
+      await fetch(WORKER_URL, {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          text: clean,
+          targetLanguage: "English"
+        })
+
+      });
+
+    const data =
+      await response.json();
 
     if (!response.ok) {
       throw new Error(
-        data.error || "Translation failed"
+        data.error ||
+        "Translation failed"
       );
     }
 
-    return data.translation;
-
-  }
-
-
-  /* =========================
-     ARTICLE
-     ========================= */
-
-  const articleTitle =
-    document.querySelector(".hero__content h1");
-
-  const articleContent =
-    document.querySelector(".content__entry");
-
-  let originalArticleTitle = null;
-  let originalArticleContent = null;
-
-  let cachedEnglishTitle = null;
-  let cachedEnglishContent = null;
-
-
-  if (articleTitle && articleContent) {
-
-    originalArticleTitle =
-      articleTitle.innerHTML;
-
-    originalArticleContent =
-      articleContent.innerHTML;
-
-  }
-
-
-  async function translateArticle() {
-
-    if (!articleTitle || !articleContent) {
-      return;
-    }
-
-    if (cachedEnglishTitle && cachedEnglishContent) {
-
-      articleTitle.textContent =
-        cachedEnglishTitle;
-
-      renderEnglishArticle(
-        cachedEnglishContent
-      );
-
-      return;
-
-    }
-
-    const titleText =
-      articleTitle.innerText.trim();
-
-    const articleText =
-      articleContent.innerText.trim();
-
-    const results = await Promise.all([
-
-      groqTranslate(titleText),
-
-      groqTranslate(articleText)
-
-    ]);
-
-    cachedEnglishTitle = results[0];
-    cachedEnglishContent = results[1];
-
-    articleTitle.textContent =
-      cachedEnglishTitle;
-
-    renderEnglishArticle(
-      cachedEnglishContent
+    localStorage.setItem(
+      cacheKey,
+      data.translation
     );
 
+    return data.translation;
   }
 
 
-  function renderEnglishArticle(text) {
+  function simpleHash(str) {
 
-    articleContent.innerHTML = "";
+    let hash = 0;
 
-    const paragraphs =
-      text.split(/\n\s*\n/).filter(Boolean);
+    for (
+      let i = 0;
+      i < str.length;
+      i++
+    ) {
 
-    paragraphs.forEach(paragraphText => {
+      hash =
+        ((hash << 5) - hash) +
+        str.charCodeAt(i);
 
-      const paragraph =
-        document.createElement("p");
+      hash |= 0;
 
-      paragraph.textContent =
-        paragraphText.trim();
+    }
 
-      articleContent.appendChild(paragraph);
+    return hash.toString();
+  }
 
-    });
+
+  /* ==========================
+     MAKALE SAYFASI
+     ========================== */
+
+  async function translateArticlePage() {
+
+    const title =
+      document.querySelector(
+        ".hero__content h1"
+      );
+
+    const content =
+      document.querySelector(
+        ".content__entry"
+      );
+
+    if (!title || !content) return;
+
+
+    remember(title);
+    remember(content, "html");
+
+
+    const titleTranslation =
+      await groqTranslate(
+        title.textContent
+      );
+
+    title.textContent =
+      titleTranslation;
+
+
+    const blocks =
+      content.querySelectorAll(
+        "p, h2, h3, h4, blockquote, li"
+      );
+
+
+    for (const block of blocks) {
+
+      const text =
+        block.textContent.trim();
+
+      if (
+        text.length < 2
+      ) {
+        continue;
+      }
+
+      if (!block.__nodusOriginalHTML) {
+        block.__nodusOriginalHTML =
+          block.innerHTML;
+      }
+
+      const translated =
+        await groqTranslate(text);
+
+      block.textContent =
+        translated;
+    }
 
   }
 
 
-  function restoreArticle() {
+  /* ==========================
+     ANA SAYFA YAZI BAŞLIKLARI
+     ========================== */
 
-    if (!articleTitle || !articleContent) {
+  async function translateHomepagePosts() {
+
+    if (
+      document.querySelector(
+        ".content__entry"
+      )
+    ) {
       return;
     }
 
-    articleTitle.innerHTML =
-      originalArticleTitle;
 
-    articleContent.innerHTML =
-      originalArticleContent;
+    const links =
+      Array.from(
+        document.querySelectorAll(
+          'main a[href$=".html"], a.feed__title, .feed__title a'
+        )
+      );
+
+
+    const unique = [
+      ...new Set(links)
+    ];
+
+
+    for (const link of unique) {
+
+      const text =
+        link.textContent.trim();
+
+      if (
+        text.length < 15 ||
+        text === "Read more"
+      ) {
+        continue;
+      }
+
+      if (
+        !link.__nodusOriginalText
+      ) {
+        link.__nodusOriginalText =
+          link.textContent;
+      }
+
+      try {
+
+        link.textContent =
+          await groqTranslate(text);
+
+      }
+      catch (error) {
+
+        console.error(
+          "NODUS title translation:",
+          error
+        );
+
+      }
+
+    }
+
+
+    const excerpts =
+      document.querySelectorAll(
+        ".feed__excerpt, .post__excerpt"
+      );
+
+
+    for (const excerpt of excerpts) {
+
+      const text =
+        excerpt.textContent.trim();
+
+      if (text.length < 20) continue;
+
+      if (
+        !excerpt.__nodusOriginalText
+      ) {
+        excerpt.__nodusOriginalText =
+          excerpt.textContent;
+      }
+
+      try {
+
+        excerpt.textContent =
+          await groqTranslate(text);
+
+      }
+      catch (error) {
+
+        console.error(
+          "NODUS excerpt translation:",
+          error
+        );
+
+      }
+
+    }
 
   }
 
 
-  /* =========================
+  /* ==========================
      ENGLISH MODE
-     ========================= */
+     ========================== */
 
   async function enableEnglish() {
+
+    if (translating) return;
+
+    translating = true;
 
     enButton.disabled = true;
     enButton.textContent = "...";
 
     try {
 
-      translateInterface();
+      translateStaticInterface();
 
-      await translateArticle();
+      await Promise.all([
+        translateArticlePage(),
+        translateHomepagePosts()
+      ]);
 
       localStorage.setItem(
         "nodus-language",
         "en"
       );
 
-      enButton.classList.add("active");
-      trButton.classList.remove("active");
+      enButton.classList.add(
+        "active"
+      );
+
+      trButton.classList.remove(
+        "active"
+      );
 
     }
 
@@ -311,6 +536,8 @@
 
     finally {
 
+      translating = false;
+
       enButton.disabled = false;
       enButton.textContent = "EN";
 
@@ -319,25 +546,78 @@
   }
 
 
-  /* =========================
-     TURKISH MODE
-     ========================= */
+  /* ==========================
+     TÜRKÇEYE DÖN
+     ========================== */
 
   function enableTurkish() {
 
-    restoreInterface();
-    restoreArticle();
+    restoreStaticInterface();
+    restoreDates();
+
+
+    originalValues.forEach(
+      (stored, element) => {
+
+        if (!document.contains(element)) {
+          return;
+        }
+
+        if (stored.type === "html") {
+          element.innerHTML =
+            stored.value;
+        }
+        else {
+          element.textContent =
+            stored.value;
+        }
+
+      }
+    );
+
+
+    document
+      .querySelectorAll(
+        "[data-nodus-original]"
+      )
+      .forEach(() => {});
+
+
+    document
+      .querySelectorAll(
+        'main a[href$=".html"], a.feed__title, .feed__title a, .feed__excerpt, .post__excerpt'
+      )
+      .forEach(element => {
+
+        if (
+          element.__nodusOriginalText
+        ) {
+          element.textContent =
+            element.__nodusOriginalText;
+        }
+
+      });
+
 
     localStorage.setItem(
       "nodus-language",
       "tr"
     );
 
-    trButton.classList.add("active");
-    enButton.classList.remove("active");
+    trButton.classList.add(
+      "active"
+    );
+
+    enButton.classList.remove(
+      "active"
+    );
 
   }
 
+
+  /* ==========================
+     EVENTLER
+     ========================== */
 
   enButton.addEventListener(
     "click",
@@ -350,42 +630,43 @@
   );
 
 
-  /* =========================
-     REMEMBER LANGUAGE
-     ========================= */
+  /* ==========================
+     DİLİ HATIRLA
+     ========================== */
 
   const savedLanguage =
     localStorage.getItem(
       "nodus-language"
     );
 
+
   if (savedLanguage === "en") {
 
     enableEnglish();
 
   }
-
   else {
 
-    trButton.classList.add("active");
+    trButton.classList.add(
+      "active"
+    );
 
   }
 
 });</script><style>#nodus-language-switcher {
-
   position: fixed;
-
   right: 24px;
   bottom: 24px;
-
   z-index: 9999;
 
-  background: #0A1726;
+  display: flex;
+  align-items: center;
+  gap: 3px;
 
+  background: #0A1726;
   border: 1px solid #C49A55;
 
   padding: 8px 12px;
-
   border-radius: 4px;
 
   font-family:
@@ -395,50 +676,36 @@
   font-size: 13px;
 
   box-shadow:
-    0 4px 14px rgba(0,0,0,.18);
-
+    0 4px 14px
+    rgba(0,0,0,.18);
 }
 
 
 #nodus-language-switcher button {
-
   border: 0;
-
   background: transparent;
-
   color: #ffffff;
-
   cursor: pointer;
 
   padding: 2px 5px;
-
   font: inherit;
-
 }
 
 
 #nodus-language-switcher button.active {
-
   color: #C49A55;
-
   font-weight: 700;
-
 }
 
 
 #nodus-language-switcher button:disabled {
-
   opacity: .6;
-
   cursor: wait;
-
 }
 
 
 #nodus-language-switcher span {
-
   color: #626A73;
-
 }</style></head><body class="tags-template"><script>document.addEventListener('DOMContentLoaded', function () {
     const logo = document.querySelector('.logo');
 
